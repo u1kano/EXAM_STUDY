@@ -50,7 +50,8 @@
 </div>
 
 <script>
-let questions = [];
+let allQuestions = []; // JSONから読み込んだ全問題
+let questions = [];    // 今回出題する12問
 let currentIdx = 0;
 let userAnswers = [];
 
@@ -59,14 +60,31 @@ async function loadQuestions() {
 try {
 const response = await fetch('questions.json');
 if (!response.ok) throw new Error('Network response was not ok');
-questions = await response.json();
-userAnswers = new Array(questions.length).fill(null);
-renderQuestion();
+allQuestions = await response.json();
+
+// 問題数が12問より少ない場合の対策
+if (allQuestions.length === 0) {
+throw new Error('問題データが空です');
+}
+
+startQuiz();
 } catch (error) {
 document.getElementById('question-text').innerText = "問題データの読み込みに失敗しました。\n(※ローカル環境で開く場合は簡易サーバー等をご利用ください)";
 document.getElementById('progress-info').innerText = "エラー";
 console.error(error);
 }
+}
+
+// クイズを開始（全問題からランダムで12問抽出）
+function startQuiz() {
+// 配列をシャッフルして先頭から12問切り出す（全問題が12問未満の場合はあるだけ使う）
+const shuffled = [...allQuestions].sort(() => Math.random() - 0.5);
+const selectCount = Math.min(12, shuffled.length);
+questions = shuffled.slice(0, selectCount);
+
+currentIdx = 0;
+userAnswers = new Array(questions.length).fill(null);
+renderQuestion();
 }
 
 function renderQuestion() {
@@ -121,7 +139,7 @@ renderQuestion();
 }
 
 function submitQuiz() {
-// 未回答がある場合の確認（オプション）
+// 未回答がある場合の確認
 if (userAnswers.includes(null)) {
 if (!confirm("未回答の問題がありますが、結果を確認しますか？")) {
 return;
@@ -129,7 +147,7 @@ return;
 }
 
 let score = 0;
-questions.goes = questions.forEach((q, idx) => {
+questions.forEach((q, idx) => {
 if (userAnswers[idx] === q.correct) score++;
 });
 
@@ -178,12 +196,11 @@ reviewContainer.appendChild(card);
 }
 
 function restartQuiz() {
-currentIdx = 0;
-userAnswers = new Array(questions.length).fill(null);
+// もう一度挑戦する時は、新しく12問を再抽選する
+startQuiz();
 document.getElementById('result-screen').classList.add('hidden');
 document.getElementById('quiz-screen').classList.remove('hidden');
 document.getElementById('footer-nav').classList.remove('hidden');
-renderQuestion();
 window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
