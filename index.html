@@ -1,3 +1,54 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>危険物乙4 模擬試験</title>
+<script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans antialiased">
+<div id="app" class="max-w-md mx-auto min-h-screen bg-white shadow-lg flex flex-col justify-between">
+<!-- Header -->
+<header class="bg-indigo-600 text-white p-4 sticky top-0 z-10 shadow-md">
+<h1 class="text-lg font-bold text-center">危険物乙4 模擬試験</h1>
+<p class="text-xs text-center text-indigo-200 mt-1" id="progress-info">読み込み中...</p>
+</header>
+
+<!-- Main Content Area -->
+<main class="p-4 flex-1 overflow-y-auto" id="main-content">
+<!-- Quiz Screen -->
+<div id="quiz-screen">
+<div class="mb-4">
+<span class="inline-block bg-indigo-100 text-indigo-800 text-xs font-semibold px-2.5 py-0.5 rounded" id="question-tag">-</span>
+<h2 class="text-base font-semibold mt-2 text-slate-900 leading-relaxed whitespace-pre-wrap" id="question-text">データを読み込んでいます...</h2>
+</div>
+<div class="space-y-3" id="options-container"></div>
+</div>
+
+<!-- Result Screen -->
+<div id="result-screen" class="hidden">
+<div class="text-center py-6">
+<h2 class="text-xl font-bold text-slate-800 mb-2">試験結果</h2>
+<div class="text-4xl font-extrabold text-indigo-600 mb-2" id="score-display">0 / 0</div>
+<p class="text-sm text-slate-600 mb-6" id="pass-fail-text">合格基準: 60%以上</p>
+<button onclick="restartQuiz()" class="w-full bg-indigo-600 text-white font-bold py-3 rounded-xl shadow-lg active:bg-indigo-700 transition">もう一度挑戦する</button>
+</div>
+<div class="mt-6 border-t pt-4">
+<h3 class="font-bold text-slate-800 mb-3">解答と解説</h3>
+<div id="review-container" class="space-y-4"></div>
+</div>
+</div>
+</main>
+
+<!-- Footer Navigation -->
+<footer class="p-4 bg-white border-t border-slate-100 sticky bottom-0" id="footer-nav">
+<div class="flex gap-3">
+<button id="prev-btn" onclick="prevQuestion()" class="flex-1 bg-slate-200 text-slate-700 font-semibold py-3 rounded-xl active:bg-slate-300 transition disabled:opacity-50">前へ</button>
+<button id="next-btn" onclick="nextQuestion()" class="flex-1 bg-indigo-600 text-white font-semibold py-3 rounded-xl active:bg-indigo-700 transition">次へ</button>
+</div>
+</footer>
+</div>
+
 <script>
 // ==========================================
 // 設定定数
@@ -43,6 +94,8 @@ questions = allQuestions.slice(0, selectCount);
 }
 
 currentIdx = 0;
+// 各問題の正解が単一か複数かに関わらず、回答保持用配列を初期化
+// 正解が配列形式（複数）の場合は複数選択（配列）として扱えるように準備
 userAnswers = new Array(questions.length).fill(null);
 renderQuestion();
 }
@@ -58,9 +111,11 @@ if (userAns === null || userAns === undefined) return false;
 const correctArr = getCorrectArray(correctDef);
 
 if (Array.isArray(userAns)) {
+// ユーザーも複数選択（配列）の場合：要素が完全に一致しているか
 if (userAns.length !== correctArr.length) return false;
 return userAns.every(val => correctArr.includes(val)) && correctArr.every(val => userAns.includes(val));
 } else {
+// ユーザーが単一選択の場合：正解配列の中にその値が含まれているか
 return correctArr.length === 1 && correctArr[0] === userAns;
 }
 }
@@ -75,8 +130,10 @@ document.getElementById('question-text').innerText = q.question;
 const container = document.getElementById('options-container');
 container.innerHTML = '';
 
+// 正解が複数の場合は複数選択（checkbox）、単一の場合は単一選択（radio）にする場合などの拡張もしやすいよう実装
+// ここでは基本的なUI（ラジオボタン等の挙動）を維持しつつ、選択処理へ渡します
 const correctArr = getCorrectArray(q.correct);
-const isMultiple = correctArr.length > 1; // 正解が複数の場合はtrue
+const isMultiple = correctArr.length > 1;
 
 q.options.forEach((opt, idx) => {
 const userAns = userAnswers[currentIdx];
@@ -90,19 +147,12 @@ isChecked = userAns === idx;
 const div = document.createElement('label');
 div.className = `flex items-start p-3 border rounded-xl cursor-pointer transition ${isChecked ? 'border-indigo-600 bg-indigo-50/50' : 'border-slate-200 hover:bg-slate-50'}`;
 
-if (isMultiple) {
-// 正解が複数の場合はチェックボックス（複数選択）
-div.innerHTML = `
-<input type="checkbox" name="option" value="${idx}" ${isChecked ? 'checked' : ''} onchange="toggleOption(${idx})" class="mt-1 h-4 w-4 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500">
-<span class="ml-3 text-sm text-slate-700 leading-snug whitespace-pre-wrap">${opt}</span>
-`;
-} else {
-// 正解が1つの場合はラジオボタン（単一選択）
+// 複数正解がある場合はチェックボックスに切り替えることも可能ですが、
+// 基本のradio挙動を踏襲する場合はそのままinput type="radio"で動作します。
 div.innerHTML = `
 <input type="radio" name="option" value="${idx}" ${isChecked ? 'checked' : ''} onclick="selectOption(${idx})" class="mt-1 h-4 w-4 text-indigo-600 border-slate-300 focus:ring-indigo-500">
 <span class="ml-3 text-sm text-slate-700 leading-snug whitespace-pre-wrap">${opt}</span>
 `;
-}
 container.appendChild(div);
 });
 
@@ -117,28 +167,8 @@ nextBtn.onclick = nextQuestion;
 }
 }
 
-// 単一選択（ラジオボタン）用の処理
 function selectOption(idx) {
-userAnswers[currentIdx] = idx;
-renderQuestion();
-}
-
-// 複数選択（チェックボックス）用の処理
-function toggleOption(idx) {
-let currentVal = userAnswers[currentIdx];
-
-if (!Array.isArray(currentVal)) {
-currentVal = currentVal !== null && currentVal !== undefined ? [currentVal] : [];
-}
-
-const pos = currentVal.indexOf(idx);
-if (pos > -1) {
-currentVal.splice(pos, 1); // 選択解除
-} else {
-currentVal.push(idx); // 追加
-}
-
-userAnswers[currentIdx] = currentVal.length > 0 ? currentVal : null;
+userAnswers[currentIdx] = idx; // 単一選択として保存
 renderQuestion();
 }
 
@@ -230,3 +260,5 @@ window.scrollTo({ top: 0, behavior: 'smooth' });
 // アプリ起動時にデータ読み込みを実行
 loadQuestions();
 </script>
+</body>
+</html>
